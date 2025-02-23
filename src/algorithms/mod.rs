@@ -2,10 +2,12 @@ use crate::maze::MazeState;
 
 mod dfs;
 mod growing_tree;
+mod kruskal;
 mod prim;
 
 pub use dfs::DepthFirstSearch;
 pub use growing_tree::GrowingTree;
+pub use kruskal::Kruskal;
 pub use prim::Prim;
 
 pub trait Algorithm {
@@ -19,6 +21,7 @@ pub enum AlgorithmLabel {
     DepthFirstSearch,
     Prim,
     GrowingTree,
+    Kruskal,
 }
 
 #[derive(Debug, Clone)]
@@ -26,6 +29,7 @@ pub enum MazeAlgorithm {
     DepthFirstSearch(DepthFirstSearch),
     Prim(Prim),
     GrowingTree(GrowingTree),
+    Kruskal(Kruskal),
 }
 
 impl MazeAlgorithm {
@@ -34,6 +38,7 @@ impl MazeAlgorithm {
             AlgorithmLabel::DepthFirstSearch => MazeAlgorithm::DepthFirstSearch(DepthFirstSearch::new()),
             AlgorithmLabel::Prim => MazeAlgorithm::Prim(Prim::new()),
             AlgorithmLabel::GrowingTree => MazeAlgorithm::GrowingTree(GrowingTree::new()),
+            AlgorithmLabel::Kruskal => MazeAlgorithm::Kruskal(Kruskal::new()),
         }
     }
 }
@@ -44,6 +49,7 @@ impl Algorithm for MazeAlgorithm {
             MazeAlgorithm::DepthFirstSearch(a) => a.initialize(maze),
             MazeAlgorithm::Prim(a) => a.initialize(maze),
             MazeAlgorithm::GrowingTree(a) => a.initialize(maze),
+            MazeAlgorithm::Kruskal(a) => a.initialize(maze),
         }
     }
 
@@ -52,6 +58,7 @@ impl Algorithm for MazeAlgorithm {
             MazeAlgorithm::DepthFirstSearch(a) => a.step(maze),
             MazeAlgorithm::Prim(a) => a.step(maze),
             MazeAlgorithm::GrowingTree(a) => a.step(maze),
+            MazeAlgorithm::Kruskal(a) => a.step(maze),
         }
     }
 }

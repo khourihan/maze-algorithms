@@ -256,6 +256,26 @@ impl Renderer for MazeRenderer {
 
             ctx.draw_rect(min - 0.5, max - 0.5, color);
         }
+
+        if self.maze.wall_head < self.maze.walls() {
+            if self.maze.wall_head >= (self.maze.size.x - 1) * self.maze.size.y {
+                let offset = self.maze.wall_head - (self.maze.size.x - 1) * self.maze.size.y;
+                let pos = UVec2::new(offset % self.maze.size.x, offset / self.maze.size.x);
+                let min = pos.as_vec2() * full_cell_size + Vec2::new(cell_offset.x, wall_offset.y);
+                let max = min + Vec2::new(cell_size.x, wall_size.y);
+
+                ctx.draw_rect(min - 0.5, max - 0.5, HEAD_COLOR);
+            } else {
+                let pos = UVec2::new(
+                    self.maze.wall_head % (self.maze.size.x - 1),
+                    self.maze.wall_head / (self.maze.size.x - 1),
+                );
+                let min = pos.as_vec2() * full_cell_size + Vec2::new(wall_offset.x, cell_offset.y);
+                let max = min + Vec2::new(wall_size.x, cell_size.y);
+
+                ctx.draw_rect(min - 0.5, max - 0.5, HEAD_COLOR);
+            }
+        }
     }
 
     fn gui(&mut self, ctx: &Context) {

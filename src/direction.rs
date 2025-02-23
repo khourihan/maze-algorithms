@@ -3,7 +3,7 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, N
 use glam::UVec2;
 use rand::seq::IndexedRandom;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Directions {
     pub east: bool,
     pub north: bool,
@@ -65,6 +65,11 @@ impl Directions {
         !(self.east || self.north || self.west || self.south)
     }
 
+    #[inline]
+    pub fn is_all(self) -> bool {
+        self.east && self.north && self.west && self.south
+    }
+
     pub fn choose<R: rand::Rng + ?Sized>(self, rng: &mut R) -> Option<Direction> {
         let mut dirs = Vec::with_capacity(4);
 
@@ -89,6 +94,21 @@ impl Directions {
 }
 
 impl Direction {
+    #[inline]
+    pub fn from_offset(a: UVec2, b: UVec2) -> Direction {
+        if b.x > a.x {
+            Direction::East
+        } else if b.y > a.y {
+            Direction::North
+        } else if a.x > b.x {
+            Direction::West
+        } else if a.y > b.y {
+            Direction::South
+        } else {
+            unreachable!()
+        }
+    }
+
     #[inline]
     pub fn offset(self, p: UVec2) -> UVec2 {
         match self {

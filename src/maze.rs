@@ -12,6 +12,7 @@ pub struct MazeState {
     pub size: UVec2,
     pub neighbors: Neighbors,
     pub head: UVec2,
+    pub wall_head: u32,
     pub finished: bool,
     visited: HashSet<UVec2>,
     finalized: HashSet<UVec2>,
@@ -24,6 +25,7 @@ impl MazeState {
             head: size,
             finished: false,
             visited: HashSet::new(),
+            wall_head: (size.x - 1) * size.y + size.x * (size.y - 1),
             finalized: HashSet::new(),
             neighbors: Neighbors::new(size),
             size,
@@ -64,6 +66,7 @@ impl MazeState {
     pub fn finish(&mut self) {
         self.finished = true;
         self.head = self.size;
+        self.wall_head = self.walls();
     }
 
     /// Computes the [`Directions`] where the given cell touches the edge of the maze.
@@ -84,6 +87,11 @@ impl MazeState {
         }
 
         d
+    }
+
+    #[inline]
+    pub fn walls(&self) -> u32 {
+        (self.size.x - 1) * self.size.y + self.size.x * (self.size.y - 1)
     }
 }
 
