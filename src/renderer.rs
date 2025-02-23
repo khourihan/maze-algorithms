@@ -22,19 +22,24 @@ use crate::{
 
 pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| true.into());
 pub static UPDATE_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+pub static PATH_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub static FRAME_TIME: Lazy<Mutex<Option<u64>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_SIZE: Lazy<Mutex<Option<UVec2>>> = Lazy::new(|| Mutex::new(None));
+pub static MAZE_START_GOAL: Lazy<Mutex<Option<(UVec2, UVec2)>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_ALGORITHM: Lazy<Mutex<Option<AlgorithmLabel>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_STATE: Lazy<Mutex<MazeState>> = Lazy::new(|| Mutex::new(MazeState::new(UVec2::ZERO)));
+pub static MAZE_PATH: Lazy<Mutex<HashSet<UVec2>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 const WALL_COLOR: [f32; 4] = [0.122, 0.137, 0.208, 1.0];
 const CELL_COLOR: [u8; 4] = [59, 66, 97, 255];
 const VISITED_COLOR: [u8; 4] = [65, 166, 181, 255];
 const FINALIZED_COLOR: [u8; 4] = [79, 214, 190, 255];
 const HEAD_COLOR: [u8; 4] = [255, 158, 100, 255];
-const GOAL_COLOR: [u8; 4] = [197, 59, 83, 255];
-const START_COLOR: [u8; 4] = [255, 117, 127, 255];
-const PATH_COLOR: [u8; 4] = [195, 232, 141, 255];
+const GOAL_COLOR: [u8; 4] = [157, 124, 216, 255];
+const START_COLOR: [u8; 4] = [187, 154, 247, 255];
+const GOAL_BAD_COLOR: [u8; 4] = [197, 59, 83, 255];
+const START_BAD_COLOR: [u8; 4] = [255, 117, 127, 255];
+const PATH_COLOR: [u8; 4] = [255, 199, 119, 255];
 
 pub struct MazeRenderer {
     pub pos: Vec2,
@@ -43,6 +48,7 @@ pub struct MazeRenderer {
     pub maze: MazeState,
     pub maze_size: UVec2,
     pub frame_time_us: u64,
+    pub path: HashSet<UVec2>,
     pub algorithm: AlgorithmLabel,
     pub info_window_open: bool,
     pub selected_start: Option<UVec2>,
@@ -87,11 +93,25 @@ impl Renderer for MazeRenderer {
             if input.mouse_pressed(MouseButton::Left) {
                 let cell = ((target * self.scale + 0.5) * self.maze.size.as_vec2()).as_uvec2();
                 self.selected_start = Some(cell);
+
+                if self.selected_goal.is_some() {
+                    MAZE_START_GOAL
+                        .lock()
+                        .unwrap()
+                        .replace((self.selected_start.unwrap(), self.selected_goal.unwrap()));
+                }
             }
 
             if input.mouse_pressed(MouseButton::Right) {
                 let cell = ((target * self.scale + 0.5) * self.maze.size.as_vec2()).as_uvec2();
                 self.selected_goal = Some(cell);
+
+                if self.selected_start.is_some() {
+                    MAZE_START_GOAL
+                        .lock()
+                        .unwrap()
+                        .replace((self.selected_start.unwrap(), self.selected_goal.unwrap()));
+                }
             }
 
             let steps = 5.0;
@@ -113,6 +133,13 @@ impl Renderer for MazeRenderer {
             let mut lock = UPDATE_LOCK.lock().unwrap();
             if *lock {
                 mem::swap(&mut self.maze, &mut MAZE_STATE.lock().unwrap());
+            }
+            *lock = false;
+        }
+        {
+            let mut lock = PATH_LOCK.lock().unwrap();
+            if *lock {
+                mem::swap(&mut self.path, &mut MAZE_PATH.lock().unwrap());
             }
             *lock = false;
         }
@@ -148,7 +175,9 @@ impl Renderer for MazeRenderer {
                     open_walls_y.insert(cell);
                 }
 
-                let mut color = if self.maze.finalized(cell) {
+                let mut color = if self.path.contains(&cell) {
+                    PATH_COLOR
+                } else if self.maze.finalized(cell) {
                     FINALIZED_COLOR
                 } else if self.maze.visited(cell) {
                     VISITED_COLOR
@@ -158,13 +187,21 @@ impl Renderer for MazeRenderer {
 
                 if let Some(start) = self.selected_start {
                     if cell == start {
-                        color = START_COLOR;
+                        if self.path.is_empty() && self.selected_goal.is_some() {
+                            color = START_BAD_COLOR;
+                        } else {
+                            color = START_COLOR;
+                        }
                     }
                 }
 
                 if let Some(goal) = self.selected_goal {
                     if cell == goal {
-                        color = GOAL_COLOR;
+                        if self.path.is_empty() && self.selected_start.is_some() {
+                            color = GOAL_BAD_COLOR;
+                        } else {
+                            color = GOAL_COLOR;
+                        }
                     }
                 }
 
@@ -183,7 +220,9 @@ impl Renderer for MazeRenderer {
             let min = wall.as_vec2() * full_cell_size + Vec2::new(wall_offset.x, cell_offset.y);
             let max = min + Vec2::new(wall_size.x, cell_size.y);
 
-            let color = if self.maze.finalized(west) && self.maze.finalized(east) {
+            let color = if self.path.contains(&west) && self.path.contains(&east) {
+                PATH_COLOR
+            } else if self.maze.finalized(west) && self.maze.finalized(east) {
                 FINALIZED_COLOR
             } else if self.maze.visited(west) && self.maze.visited(east) {
                 VISITED_COLOR
@@ -201,7 +240,9 @@ impl Renderer for MazeRenderer {
             let min = wall.as_vec2() * full_cell_size + Vec2::new(cell_offset.x, wall_offset.y);
             let max = min + Vec2::new(cell_size.x, wall_size.y);
 
-            let color = if self.maze.finalized(south) && self.maze.finalized(north) {
+            let color = if self.path.contains(&south) && self.path.contains(&north) {
+                PATH_COLOR
+            } else if self.maze.finalized(south) && self.maze.finalized(north) {
                 FINALIZED_COLOR
             } else if self.maze.visited(south) && self.maze.visited(north) {
                 VISITED_COLOR

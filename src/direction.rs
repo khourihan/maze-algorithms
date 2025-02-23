@@ -110,6 +110,33 @@ impl Direction {
     }
 }
 
+impl IntoIterator for Directions {
+    type Item = Direction;
+    type IntoIter = std::vec::IntoIter<Direction>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut dirs = Vec::with_capacity(4);
+
+        if self.east {
+            dirs.push(Direction::East);
+        }
+
+        if self.north {
+            dirs.push(Direction::North);
+        }
+
+        if self.west {
+            dirs.push(Direction::West);
+        }
+
+        if self.south {
+            dirs.push(Direction::South);
+        }
+
+        dirs.into_iter()
+    }
+}
+
 impl From<Direction> for Directions {
     fn from(value: Direction) -> Self {
         match value {

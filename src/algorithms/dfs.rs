@@ -37,7 +37,7 @@ impl Algorithm for DepthFirstSearch {
     }
 
     fn step(&mut self, maze: &mut MazeState) {
-        let mut dirs = !Directions::from_fn(|d| maze.visited(d.offset(maze.head)));
+        let mut dirs = !Directions::from_fn(|d| d.checked_offset(maze.head).is_some_and(|c| maze.visited(c)));
         dirs &= !maze.edges(maze.head);
 
         if let Some(dir) = dirs.choose(&mut self.rng) {

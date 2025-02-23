@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     sync::atomic::Ordering,
     thread,
     time::{Duration, Instant},
@@ -11,6 +12,7 @@ use renderer::MazeRenderer;
 use winit::event_loop::{ControlFlow, EventLoop};
 
 mod algorithms;
+mod astar;
 mod direction;
 mod input;
 mod maze;
@@ -26,8 +28,12 @@ fn main() {
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut maze = MazeState::new(START_MAZE_SIZE);
-    let mut algorithm = MazeAlgorithm::from_label(START_ALGORITHM);
+    let mut maze_size = START_MAZE_SIZE;
+    let mut algorithm_label = START_ALGORITHM;
+
+    let mut path = HashSet::new();
+    let mut maze = MazeState::new(maze_size);
+    let mut algorithm = MazeAlgorithm::from_label(algorithm_label);
 
     algorithm.initialize(&mut maze);
 
@@ -50,18 +56,49 @@ fn main() {
             }
             *lock |= true;
 
+            let mut update_path = false;
+
             if let Some(micros) = renderer::FRAME_TIME.lock().unwrap().take() {
                 frame_time = Duration::from_micros(micros);
             }
 
             if let Some(size) = renderer::MAZE_SIZE.lock().unwrap().take() {
-                maze = MazeState::new(size);
+                maze_size = size;
+
+                maze = MazeState::new(maze_size);
+                algorithm = MazeAlgorithm::from_label(algorithm_label);
                 algorithm.initialize(&mut maze);
+                path.clear();
+                update_path |= true;
             }
 
             if let Some(label) = renderer::MAZE_ALGORITHM.lock().unwrap().take() {
-                algorithm = MazeAlgorithm::from_label(label);
+                algorithm_label = label;
+
+                maze = MazeState::new(maze_size);
+                algorithm = MazeAlgorithm::from_label(algorithm_label);
                 algorithm.initialize(&mut maze);
+                path.clear();
+                update_path |= true;
+            }
+
+            if let Some((start, goal)) = renderer::MAZE_START_GOAL.lock().unwrap().take() {
+                if let Some((shortest_path, _)) = astar::astar(start, goal, &maze) {
+                    path = shortest_path;
+                } else {
+                    path.clear();
+                }
+
+                update_path |= true;
+            }
+
+            if update_path {
+                let mut lock = renderer::PATH_LOCK.lock().unwrap();
+                {
+                    let mut lock = renderer::MAZE_PATH.lock().unwrap();
+                    *lock = path.clone();
+                }
+                *lock |= true;
             }
         }
     });
@@ -77,6 +114,7 @@ fn main() {
         wall_width: 0.3,
         selected_start: None,
         selected_goal: None,
+        path: HashSet::new(),
     };
 
     let mut app = render::App::new(renderer);
