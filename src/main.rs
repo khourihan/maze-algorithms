@@ -1,7 +1,11 @@
-use std::thread;
+use std::{
+    sync::atomic::Ordering,
+    thread,
+    time::{Duration, Instant},
+};
 
 use glam::UVec2;
-use maze::MazeState;
+use maze::{Directions, MazeState};
 use renderer::MazeRenderer;
 use winit::event_loop::{ControlFlow, EventLoop};
 
@@ -15,15 +19,32 @@ fn main() {
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut maze_state = MazeState::new(UVec2::splat(16));
+    let mut maze = MazeState::new(UVec2::splat(16));
 
-    thread::spawn(move || {
+    maze.neighbors[UVec2::new(4, 4)].insert(Directions::EAST);
+    maze.neighbors[UVec2::new(5, 4)].insert(Directions::WEST);
+    maze.neighbors[UVec2::new(5, 4)].insert(Directions::NORTH);
+    maze.neighbors[UVec2::new(5, 5)].insert(Directions::SOUTH);
+    maze.neighbors[UVec2::new(5, 5)].insert(Directions::NORTH);
+    maze.neighbors[UVec2::new(5, 6)].insert(Directions::SOUTH);
+
+    let frame_time = Duration::from_micros(16667);
+
+    thread::spawn(move || loop {
+        let start = Instant::now();
+
         let mut lock = renderer::UPDATE_LOCK.lock().unwrap();
         {
             let mut lock = renderer::MAZE_STATE.lock().unwrap();
-            *lock = maze_state
+            *lock = maze.clone();
         }
         *lock |= true;
+
+        let runtime = start.elapsed();
+
+        if let Some(remaining) = frame_time.checked_sub(runtime) {
+            thread::sleep(remaining);
+        }
     });
 
     let renderer = MazeRenderer::default();
