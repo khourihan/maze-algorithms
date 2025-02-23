@@ -80,11 +80,15 @@ impl Renderer for MazeRenderer {
         if input.key_pressed(KeyCode::Minus) {
             self.maze_size = (self.maze_size / 2).max(UVec2::splat(2));
             MAZE_SIZE.lock().unwrap().replace(self.maze_size);
+            self.selected_start = None;
+            self.selected_goal = None;
         }
 
         if input.key_pressed(KeyCode::Equal) {
             self.maze_size *= 2;
             MAZE_SIZE.lock().unwrap().replace(self.maze_size);
+            self.selected_start = None;
+            self.selected_goal = None;
         }
 
         if let Some((mx, my)) = input.cursor() {

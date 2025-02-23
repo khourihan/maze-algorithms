@@ -1,9 +1,11 @@
 use crate::maze::MazeState;
 
 mod dfs;
+mod growing_tree;
 mod prim;
 
 pub use dfs::DepthFirstSearch;
+pub use growing_tree::GrowingTree;
 pub use prim::Prim;
 
 pub trait Algorithm {
@@ -16,12 +18,14 @@ pub trait Algorithm {
 pub enum AlgorithmLabel {
     DepthFirstSearch,
     Prim,
+    GrowingTree,
 }
 
 #[derive(Debug, Clone)]
 pub enum MazeAlgorithm {
     DepthFirstSearch(DepthFirstSearch),
     Prim(Prim),
+    GrowingTree(GrowingTree),
 }
 
 impl MazeAlgorithm {
@@ -29,6 +33,7 @@ impl MazeAlgorithm {
         match label {
             AlgorithmLabel::DepthFirstSearch => MazeAlgorithm::DepthFirstSearch(DepthFirstSearch::new()),
             AlgorithmLabel::Prim => MazeAlgorithm::Prim(Prim::new()),
+            AlgorithmLabel::GrowingTree => MazeAlgorithm::GrowingTree(GrowingTree::new()),
         }
     }
 }
@@ -38,6 +43,7 @@ impl Algorithm for MazeAlgorithm {
         match self {
             MazeAlgorithm::DepthFirstSearch(a) => a.initialize(maze),
             MazeAlgorithm::Prim(a) => a.initialize(maze),
+            MazeAlgorithm::GrowingTree(a) => a.initialize(maze),
         }
     }
 
@@ -45,6 +51,7 @@ impl Algorithm for MazeAlgorithm {
         match self {
             MazeAlgorithm::DepthFirstSearch(a) => a.step(maze),
             MazeAlgorithm::Prim(a) => a.step(maze),
+            MazeAlgorithm::GrowingTree(a) => a.step(maze),
         }
     }
 }

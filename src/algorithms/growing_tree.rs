@@ -7,24 +7,27 @@ use crate::{direction::Directions, maze::MazeState};
 use super::Algorithm;
 
 #[derive(Debug, Clone)]
-pub struct Prim {
+pub struct GrowingTree {
     rng: SmallRng,
     visited: IndexSet<UVec2>,
+    path_length: u32,
 }
 
-impl Prim {
-    pub fn new() -> Prim {
-        Prim {
+impl GrowingTree {
+    pub fn new() -> GrowingTree {
+        GrowingTree {
             rng: SmallRng::seed_from_u64(0),
             visited: IndexSet::new(),
+            path_length: 0,
         }
     }
 }
 
-impl Algorithm for Prim {
+impl Algorithm for GrowingTree {
     fn initialize(&mut self, maze: &mut MazeState) {
         self.rng = SmallRng::from_rng(&mut rand::rng());
         self.visited.clear();
+        self.path_length = 0;
 
         let x = self.rng.random_range(0..maze.size.x);
         let y = self.rng.random_range(0..maze.size.y);
@@ -43,10 +46,21 @@ impl Algorithm for Prim {
             if let Some(dir) = dirs.choose(&mut self.rng) {
                 maze.neighbors.open(maze.head, dir);
                 maze.head = dir.offset(maze.head);
+
+                self.path_length += 1;
+
+                if self.path_length < 4 {
+                    self.visited.insert(maze.head);
+                    maze.set_visited(maze.head);
+                } else {
+                    self.path_length = 0;
+                }
+
                 return;
             } else {
                 self.visited.shift_remove(&maze.head);
                 maze.set_finalized(maze.head);
+                self.path_length = 0;
             }
         } else {
             self.visited.insert(maze.head);
