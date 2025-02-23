@@ -21,7 +21,7 @@ mod renderer;
 
 const START_FRAME_TIME_US: u64 = 65536;
 const START_MAZE_SIZE: UVec2 = UVec2::splat(16);
-const START_ALGORITHM: AlgorithmLabel = AlgorithmLabel::DepthFirstSearch;
+const START_ALGORITHM: AlgorithmLabel = AlgorithmLabel::Prim;
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
