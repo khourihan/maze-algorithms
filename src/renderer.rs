@@ -91,7 +91,7 @@ impl Renderer for MazeRenderer {
             let target = Vec2::new(mx * 2.0 - width as f32, height as f32 - my * 2.0) / height as f32;
 
             if input.mouse_pressed(MouseButton::Left) {
-                let cell = ((target * self.scale + 0.5) * self.maze.size.as_vec2()).as_uvec2();
+                let cell = ((target * self.scale + 0.5 + self.pos) * self.maze.size.as_vec2()).as_uvec2();
                 self.selected_start = Some(cell);
 
                 if self.selected_goal.is_some() {
@@ -103,7 +103,7 @@ impl Renderer for MazeRenderer {
             }
 
             if input.mouse_pressed(MouseButton::Right) {
-                let cell = ((target * self.scale + 0.5) * self.maze.size.as_vec2()).as_uvec2();
+                let cell = ((target * self.scale + 0.5 + self.pos) * self.maze.size.as_vec2()).as_uvec2();
                 self.selected_goal = Some(cell);
 
                 if self.selected_start.is_some() {
