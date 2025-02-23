@@ -13,6 +13,7 @@ use once_cell::sync::Lazy;
 use winit::{event::MouseButton, keyboard::KeyCode};
 
 use crate::{
+    algorithms::AlgorithmLabel,
     direction::Direction,
     input::InputManager,
     maze::MazeState,
@@ -23,6 +24,7 @@ pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| true.into());
 pub static UPDATE_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub static FRAME_TIME: Lazy<Mutex<Option<u64>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_SIZE: Lazy<Mutex<Option<UVec2>>> = Lazy::new(|| Mutex::new(None));
+pub static MAZE_ALGORITHM: Lazy<Mutex<Option<AlgorithmLabel>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_STATE: Lazy<Mutex<MazeState>> = Lazy::new(|| Mutex::new(MazeState::new(UVec2::ZERO)));
 
 const WALL_COLOR: [f32; 4] = [0.101_960_786, 0.098_039_227, 0.098_039_227, 1.0];
@@ -38,6 +40,7 @@ pub struct MazeRenderer {
     pub maze: MazeState,
     pub maze_size: UVec2,
     pub frame_time_us: u64,
+    pub algorithm: AlgorithmLabel,
     pub info_window_open: bool,
 }
 
@@ -183,5 +186,22 @@ impl Renderer for MazeRenderer {
         }
     }
 
-    fn gui(&mut self, ctx: &Context) {}
+    fn gui(&mut self, ctx: &Context) {
+        egui::Window::new("").open(&mut self.info_window_open).show(ctx, |ui| {
+            if egui::ComboBox::from_label("Algorithm")
+                .selected_text(format!("{:?}", self.algorithm))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.algorithm,
+                        AlgorithmLabel::DepthFirstSearch,
+                        "Depth First Search",
+                    );
+                })
+                .response
+                .changed()
+            {
+                MAZE_ALGORITHM.lock().unwrap().replace(self.algorithm);
+            }
+        });
+    }
 }

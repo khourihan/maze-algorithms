@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use algorithms::{Algorithm, DepthFirstSearch, MazeAlgorithm};
+use algorithms::{Algorithm, AlgorithmLabel, MazeAlgorithm};
 use glam::{UVec2, Vec2};
 use maze::MazeState;
 use renderer::MazeRenderer;
@@ -19,6 +19,7 @@ mod renderer;
 
 const START_FRAME_TIME_US: u64 = 65536;
 const START_MAZE_SIZE: UVec2 = UVec2::splat(16);
+const START_ALGORITHM: AlgorithmLabel = AlgorithmLabel::DepthFirstSearch;
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
@@ -26,7 +27,7 @@ fn main() {
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut maze = MazeState::new(START_MAZE_SIZE);
-    let mut algorithm = MazeAlgorithm::DepthFirstSearch(DepthFirstSearch::new());
+    let mut algorithm = MazeAlgorithm::from_label(START_ALGORITHM);
 
     algorithm.initialize(&mut maze);
 
@@ -57,6 +58,11 @@ fn main() {
                 maze = MazeState::new(size);
                 algorithm.initialize(&mut maze);
             }
+
+            if let Some(label) = renderer::MAZE_ALGORITHM.lock().unwrap().take() {
+                algorithm = MazeAlgorithm::from_label(label);
+                algorithm.initialize(&mut maze);
+            }
         }
     });
 
@@ -66,6 +72,7 @@ fn main() {
         maze: MazeState::new(START_MAZE_SIZE),
         maze_size: START_MAZE_SIZE,
         frame_time_us: START_FRAME_TIME_US,
+        algorithm: START_ALGORITHM,
         info_window_open: false,
         wall_width: 0.3,
     };

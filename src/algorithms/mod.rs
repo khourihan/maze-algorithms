@@ -10,9 +10,22 @@ pub trait Algorithm {
     fn step(&mut self, maze: &mut MazeState);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlgorithmLabel {
+    DepthFirstSearch,
+}
+
 #[derive(Debug, Clone)]
 pub enum MazeAlgorithm {
     DepthFirstSearch(DepthFirstSearch),
+}
+
+impl MazeAlgorithm {
+    pub fn from_label(label: AlgorithmLabel) -> MazeAlgorithm {
+        match label {
+            AlgorithmLabel::DepthFirstSearch => MazeAlgorithm::DepthFirstSearch(DepthFirstSearch::new()),
+        }
+    }
 }
 
 impl Algorithm for MazeAlgorithm {
