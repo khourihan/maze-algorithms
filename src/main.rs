@@ -4,50 +4,72 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::UVec2;
-use maze::{Directions, MazeState};
+use algorithms::{Algorithm, DepthFirstSearch, MazeAlgorithm};
+use glam::{UVec2, Vec2};
+use maze::MazeState;
 use renderer::MazeRenderer;
 use winit::event_loop::{ControlFlow, EventLoop};
 
+mod algorithms;
+mod direction;
 mod input;
 mod maze;
 mod render;
 mod renderer;
+
+const START_FRAME_TIME_US: u64 = 65536;
+const START_MAZE_SIZE: UVec2 = UVec2::splat(16);
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut maze = MazeState::new(UVec2::splat(16));
+    let mut maze = MazeState::new(START_MAZE_SIZE);
+    let mut algorithm = MazeAlgorithm::DepthFirstSearch(DepthFirstSearch::new());
 
-    maze.neighbors[UVec2::new(4, 4)].insert(Directions::EAST);
-    maze.neighbors[UVec2::new(5, 4)].insert(Directions::WEST);
-    maze.neighbors[UVec2::new(5, 4)].insert(Directions::NORTH);
-    maze.neighbors[UVec2::new(5, 5)].insert(Directions::SOUTH);
-    maze.neighbors[UVec2::new(5, 5)].insert(Directions::NORTH);
-    maze.neighbors[UVec2::new(5, 6)].insert(Directions::SOUTH);
+    algorithm.initialize(&mut maze);
 
-    let frame_time = Duration::from_micros(16667);
+    thread::spawn(move || {
+        let mut start = Instant::now();
+        let mut frame_time = Duration::from_micros(START_FRAME_TIME_US);
 
-    thread::spawn(move || loop {
-        let start = Instant::now();
+        loop {
+            if renderer::PAUSED.load(Ordering::Relaxed) || frame_time.checked_sub(start.elapsed()).is_some() {
+                thread::yield_now();
+            } else if !maze.finished {
+                algorithm.step(&mut maze);
+                start = Instant::now();
+            }
 
-        let mut lock = renderer::UPDATE_LOCK.lock().unwrap();
-        {
-            let mut lock = renderer::MAZE_STATE.lock().unwrap();
-            *lock = maze.clone();
-        }
-        *lock |= true;
+            let mut lock = renderer::UPDATE_LOCK.lock().unwrap();
+            {
+                let mut lock = renderer::MAZE_STATE.lock().unwrap();
+                *lock = maze.clone();
+            }
+            *lock |= true;
 
-        let runtime = start.elapsed();
+            if let Some(micros) = renderer::FRAME_TIME.lock().unwrap().take() {
+                frame_time = Duration::from_micros(micros);
+            }
 
-        if let Some(remaining) = frame_time.checked_sub(runtime) {
-            thread::sleep(remaining);
+            if let Some(size) = renderer::MAZE_SIZE.lock().unwrap().take() {
+                maze = MazeState::new(size);
+                algorithm.initialize(&mut maze);
+            }
         }
     });
 
-    let renderer = MazeRenderer::default();
+    let renderer = MazeRenderer {
+        pos: Vec2::ZERO,
+        scale: 0.5,
+        maze: MazeState::new(START_MAZE_SIZE),
+        maze_size: START_MAZE_SIZE,
+        frame_time_us: START_FRAME_TIME_US,
+        info_window_open: false,
+        wall_width: 0.3,
+    };
+
     let mut app = render::App::new(renderer);
 
     event_loop.run_app(&mut app).unwrap();

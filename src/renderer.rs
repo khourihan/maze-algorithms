@@ -13,14 +13,17 @@ use once_cell::sync::Lazy;
 use winit::{event::MouseButton, keyboard::KeyCode};
 
 use crate::{
+    direction::Direction,
     input::InputManager,
-    maze::{Directions, MazeState},
+    maze::MazeState,
     render::{RenderContext, Renderer},
 };
 
 pub static PAUSED: Lazy<AtomicBool> = Lazy::new(|| true.into());
 pub static UPDATE_LOCK: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
-pub static MAZE_STATE: Lazy<Mutex<MazeState>> = Lazy::new(|| Mutex::new(MazeState::new(UVec2::splat(16))));
+pub static FRAME_TIME: Lazy<Mutex<Option<u64>>> = Lazy::new(|| Mutex::new(None));
+pub static MAZE_SIZE: Lazy<Mutex<Option<UVec2>>> = Lazy::new(|| Mutex::new(None));
+pub static MAZE_STATE: Lazy<Mutex<MazeState>> = Lazy::new(|| Mutex::new(MazeState::new(UVec2::ZERO)));
 
 const WALL_COLOR: [f32; 4] = [0.101_960_786, 0.098_039_227, 0.098_039_227, 1.0];
 const CELL_COLOR: [u8; 4] = [77, 77, 78, 255];
@@ -29,11 +32,13 @@ const FINALIZED_COLOR: [u8; 4] = [3, 147, 158, 255];
 const HEAD_COLOR: [u8; 4] = [236, 129, 2, 255];
 
 pub struct MazeRenderer {
-    pos: Vec2,
-    scale: f32,
-    wall_width: f32,
-    maze: MazeState,
-    info_window_open: bool,
+    pub pos: Vec2,
+    pub scale: f32,
+    pub wall_width: f32,
+    pub maze: MazeState,
+    pub maze_size: UVec2,
+    pub frame_time_us: u64,
+    pub info_window_open: bool,
 }
 
 impl Renderer for MazeRenderer {
@@ -42,6 +47,30 @@ impl Renderer for MazeRenderer {
 
         if input.key_pressed(KeyCode::Space) {
             PAUSED.fetch_not(Ordering::Relaxed);
+        }
+
+        if input.key_pressed(KeyCode::ArrowLeft) {
+            self.frame_time_us *= 2;
+            FRAME_TIME.lock().unwrap().replace(self.frame_time_us);
+        }
+
+        if input.key_pressed(KeyCode::ArrowRight) {
+            self.frame_time_us = (self.frame_time_us / 2).max(1);
+            FRAME_TIME.lock().unwrap().replace(self.frame_time_us);
+        }
+
+        if input.key_pressed(KeyCode::KeyR) {
+            MAZE_SIZE.lock().unwrap().replace(self.maze_size);
+        }
+
+        if input.key_pressed(KeyCode::Minus) {
+            self.maze_size = (self.maze_size / 2).max(UVec2::splat(2));
+            MAZE_SIZE.lock().unwrap().replace(self.maze_size);
+        }
+
+        if input.key_pressed(KeyCode::Equal) {
+            self.maze_size *= 2;
+            MAZE_SIZE.lock().unwrap().replace(self.maze_size);
         }
 
         if let Some((mx, my)) = input.cursor() {
@@ -75,11 +104,11 @@ impl Renderer for MazeRenderer {
         ctx.set_clear_color(WALL_COLOR);
         ctx.clear_rects();
 
-        let inv_maze_size = self.maze.size.as_vec2().recip();
-        let cell_size = (1.0 - self.wall_width) * inv_maze_size;
-        let cell_offset = self.wall_width * 0.5 * inv_maze_size;
-        let wall_size = self.wall_width * inv_maze_size;
-        let wall_offset = (1.0 - 0.5 * self.wall_width) * inv_maze_size;
+        let full_cell_size = self.maze.size.as_vec2().recip();
+        let cell_size = (1.0 - self.wall_width) * full_cell_size;
+        let cell_offset = self.wall_width * 0.5 * full_cell_size;
+        let wall_size = self.wall_width * full_cell_size;
+        let wall_offset = (1.0 - 0.5 * self.wall_width) * full_cell_size;
 
         let mut open_walls_x = HashSet::new();
         let mut open_walls_y = HashSet::new();
@@ -88,16 +117,16 @@ impl Renderer for MazeRenderer {
             for x in 0..self.maze.size.x {
                 let cell = UVec2::new(x, y);
 
-                let min = cell.as_vec2() * inv_maze_size + cell_offset;
+                let min = cell.as_vec2() * full_cell_size + cell_offset;
                 let max = min + cell_size;
 
                 let neighbors = self.maze.neighbors[cell];
 
-                if neighbors.contains(Directions::EAST) {
+                if neighbors.contains(Direction::East) {
                     open_walls_x.insert(cell);
                 }
 
-                if neighbors.contains(Directions::NORTH) {
+                if neighbors.contains(Direction::North) {
                     open_walls_y.insert(cell);
                 }
 
@@ -109,10 +138,8 @@ impl Renderer for MazeRenderer {
                     CELL_COLOR
                 };
 
-                if let Some(head) = self.maze.head {
-                    if y * self.maze.size.x + x == head {
-                        color = HEAD_COLOR;
-                    }
+                if cell == self.maze.head {
+                    color = HEAD_COLOR;
                 }
 
                 ctx.draw_rect(min - 0.5, max - 0.5, color);
@@ -123,7 +150,7 @@ impl Renderer for MazeRenderer {
             let west = wall;
             let east = wall + UVec2::new(1, 0);
 
-            let min = wall.as_vec2() * inv_maze_size + Vec2::new(wall_offset.x, cell_offset.y);
+            let min = wall.as_vec2() * full_cell_size + Vec2::new(wall_offset.x, cell_offset.y);
             let max = min + Vec2::new(wall_size.x, cell_size.y);
 
             let color = if self.maze.finalized(west) && self.maze.finalized(east) {
@@ -134,14 +161,14 @@ impl Renderer for MazeRenderer {
                 CELL_COLOR
             };
 
-            ctx.draw_rect(min, max, color);
+            ctx.draw_rect(min - 0.5, max - 0.5, color);
         }
 
         for wall in open_walls_y {
             let south = wall;
             let north = wall + UVec2::new(0, 1);
 
-            let min = wall.as_vec2() * inv_maze_size + Vec2::new(cell_offset.x, wall_offset.y);
+            let min = wall.as_vec2() * full_cell_size + Vec2::new(cell_offset.x, wall_offset.y);
             let max = min + Vec2::new(cell_size.x, wall_size.y);
 
             let color = if self.maze.finalized(south) && self.maze.finalized(north) {
@@ -152,21 +179,9 @@ impl Renderer for MazeRenderer {
                 CELL_COLOR
             };
 
-            ctx.draw_rect(min, max, color);
+            ctx.draw_rect(min - 0.5, max - 0.5, color);
         }
     }
 
     fn gui(&mut self, ctx: &Context) {}
-}
-
-impl Default for MazeRenderer {
-    fn default() -> Self {
-        Self {
-            pos: Vec2::ZERO,
-            scale: 0.5,
-            maze: MazeState::new(UVec2::splat(16)),
-            info_window_open: false,
-            wall_width: 0.3,
-        }
-    }
 }
