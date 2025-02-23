@@ -75,6 +75,8 @@ fn main() {
         algorithm: START_ALGORITHM,
         info_window_open: false,
         wall_width: 0.3,
+        selected_start: None,
+        selected_goal: None,
     };
 
     let mut app = render::App::new(renderer);

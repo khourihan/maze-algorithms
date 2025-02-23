@@ -27,11 +27,14 @@ pub static MAZE_SIZE: Lazy<Mutex<Option<UVec2>>> = Lazy::new(|| Mutex::new(None)
 pub static MAZE_ALGORITHM: Lazy<Mutex<Option<AlgorithmLabel>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_STATE: Lazy<Mutex<MazeState>> = Lazy::new(|| Mutex::new(MazeState::new(UVec2::ZERO)));
 
-const WALL_COLOR: [f32; 4] = [0.101_960_786, 0.098_039_227, 0.098_039_227, 1.0];
-const CELL_COLOR: [u8; 4] = [77, 77, 78, 255];
-const VISITED_COLOR: [u8; 4] = [0, 116, 117, 255];
-const FINALIZED_COLOR: [u8; 4] = [3, 147, 158, 255];
-const HEAD_COLOR: [u8; 4] = [236, 129, 2, 255];
+const WALL_COLOR: [f32; 4] = [0.122, 0.137, 0.208, 1.0];
+const CELL_COLOR: [u8; 4] = [59, 66, 97, 255];
+const VISITED_COLOR: [u8; 4] = [65, 166, 181, 255];
+const FINALIZED_COLOR: [u8; 4] = [79, 214, 190, 255];
+const HEAD_COLOR: [u8; 4] = [255, 158, 100, 255];
+const GOAL_COLOR: [u8; 4] = [197, 59, 83, 255];
+const START_COLOR: [u8; 4] = [255, 117, 127, 255];
+const PATH_COLOR: [u8; 4] = [195, 232, 141, 255];
 
 pub struct MazeRenderer {
     pub pos: Vec2,
@@ -42,6 +45,8 @@ pub struct MazeRenderer {
     pub frame_time_us: u64,
     pub algorithm: AlgorithmLabel,
     pub info_window_open: bool,
+    pub selected_start: Option<UVec2>,
+    pub selected_goal: Option<UVec2>,
 }
 
 impl Renderer for MazeRenderer {
@@ -77,16 +82,26 @@ impl Renderer for MazeRenderer {
         }
 
         if let Some((mx, my)) = input.cursor() {
+            let target = Vec2::new(mx * 2.0 - width as f32, height as f32 - my * 2.0) / height as f32;
+
+            if input.mouse_pressed(MouseButton::Left) {
+                let cell = ((target * self.scale + 0.5) * self.maze.size.as_vec2()).as_uvec2();
+                self.selected_start = Some(cell);
+            }
+
+            if input.mouse_pressed(MouseButton::Right) {
+                let cell = ((target * self.scale + 0.5) * self.maze.size.as_vec2()).as_uvec2();
+                self.selected_goal = Some(cell);
+            }
+
             let steps = 5.0;
             let zoom = (-input.scroll_diff().1 / steps).exp2();
-
-            let target = Vec2::new(mx * 2.0 - width as f32, height as f32 - my * 2.0) / height as f32;
 
             self.pos += target * self.scale * (1.0 - zoom);
             self.scale *= zoom;
         }
 
-        if input.mouse_held(MouseButton::Left) {
+        if input.mouse_held(MouseButton::Left) && input.key_pressed(KeyCode::ShiftLeft) {
             let (mdx, mdy) = input.mouse_diff();
             self.pos.x -= mdx / height as f32 * self.scale * 2.0;
             self.pos.y += mdy / height as f32 * self.scale * 2.0;
@@ -140,6 +155,18 @@ impl Renderer for MazeRenderer {
                 } else {
                     CELL_COLOR
                 };
+
+                if let Some(start) = self.selected_start {
+                    if cell == start {
+                        color = START_COLOR;
+                    }
+                }
+
+                if let Some(goal) = self.selected_goal {
+                    if cell == goal {
+                        color = GOAL_COLOR;
+                    }
+                }
 
                 if cell == self.maze.head {
                     color = HEAD_COLOR;

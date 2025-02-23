@@ -114,7 +114,7 @@ pub enum KeyAction {
     Released(PhysicalKey),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum MouseAction {
     Pressed(MouseButton),
     Released(MouseButton),
@@ -184,6 +184,17 @@ impl InputManager {
                 return true;
             }
         }
+        false
+    }
+
+    pub fn mouse_pressed(&self, mouse_button: MouseButton) -> bool {
+        if let Some(current) = &self.current {
+            let searched_action = MouseAction::Pressed(mouse_button);
+            if current.mouse_actions.contains(&searched_action) {
+                return true;
+            }
+        }
+
         false
     }
 
