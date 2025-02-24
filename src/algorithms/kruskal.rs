@@ -1,12 +1,9 @@
 use std::collections::HashSet;
 
 use glam::UVec2;
-use rand::{rngs::SmallRng, seq::SliceRandom, Rng, SeedableRng};
+use rand::{rngs::SmallRng, seq::SliceRandom, SeedableRng};
 
-use crate::{
-    direction::{Direction, Directions},
-    maze::MazeState,
-};
+use crate::{direction::Direction, maze::MazeState};
 
 use super::Algorithm;
 
