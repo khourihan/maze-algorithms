@@ -21,7 +21,7 @@ mod renderer;
 
 const START_FRAME_TIME_US: u64 = 65536;
 const START_MAZE_SIZE: UVec2 = UVec2::splat(16);
-const START_ALGORITHM: AlgorithmLabel = AlgorithmLabel::Eller;
+const START_ALGORITHM: AlgorithmLabel = AlgorithmLabel::Sidewinder;
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
@@ -110,7 +110,7 @@ fn main() {
         maze_size: START_MAZE_SIZE,
         frame_time_us: START_FRAME_TIME_US,
         algorithm: START_ALGORITHM,
-        info_window_open: false,
+        info_window_open: true,
         wall_width: 0.3,
         selected_start: None,
         selected_goal: None,

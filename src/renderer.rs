@@ -27,7 +27,7 @@ pub static FRAME_TIME: Lazy<Mutex<Option<u64>>> = Lazy::new(|| Mutex::new(None))
 pub static MAZE_SIZE: Lazy<Mutex<Option<UVec2>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_START_GOAL: Lazy<Mutex<Option<(UVec2, UVec2)>>> = Lazy::new(|| Mutex::new(None));
 pub static MAZE_ALGORITHM: Lazy<Mutex<Option<AlgorithmLabel>>> = Lazy::new(|| Mutex::new(None));
-pub static MAZE_STATE: Lazy<Mutex<MazeState>> = Lazy::new(|| Mutex::new(MazeState::new(UVec2::ZERO)));
+pub static MAZE_STATE: Lazy<Mutex<MazeState>> = Lazy::new(|| Mutex::new(MazeState::new(UVec2::ONE)));
 pub static MAZE_PATH: Lazy<Mutex<HashSet<UVec2>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 const WALL_COLOR: [f32; 4] = [0.122, 0.137, 0.208, 1.0];
@@ -279,8 +279,9 @@ impl Renderer for MazeRenderer {
     }
 
     fn gui(&mut self, ctx: &Context) {
+        let before = self.algorithm;
         egui::Window::new("").open(&mut self.info_window_open).show(ctx, |ui| {
-            if egui::ComboBox::from_label("Algorithm")
+            egui::ComboBox::from_label("Algorithm")
                 .selected_text(format!("{:?}", self.algorithm))
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
@@ -288,10 +289,14 @@ impl Renderer for MazeRenderer {
                         AlgorithmLabel::DepthFirstSearch,
                         "Depth First Search",
                     );
-                })
-                .response
-                .changed()
-            {
+                    ui.selectable_value(&mut self.algorithm, AlgorithmLabel::Prim, "Prim");
+                    ui.selectable_value(&mut self.algorithm, AlgorithmLabel::GrowingTree, "Growing Tree");
+                    ui.selectable_value(&mut self.algorithm, AlgorithmLabel::Kruskal, "Kruskal");
+                    ui.selectable_value(&mut self.algorithm, AlgorithmLabel::Eller, "Eller");
+                    ui.selectable_value(&mut self.algorithm, AlgorithmLabel::Sidewinder, "Sidewinder");
+                });
+
+            if self.algorithm != before {
                 MAZE_ALGORITHM.lock().unwrap().replace(self.algorithm);
             }
         });

@@ -5,12 +5,14 @@ mod eller;
 mod growing_tree;
 mod kruskal;
 mod prim;
+mod sidewinder;
 
 pub use dfs::DepthFirstSearch;
 pub use eller::Eller;
 pub use growing_tree::GrowingTree;
 pub use kruskal::Kruskal;
 pub use prim::Prim;
+use sidewinder::Sidewinder;
 
 pub trait Algorithm {
     fn initialize(&mut self, maze: &mut MazeState);
@@ -25,6 +27,7 @@ pub enum AlgorithmLabel {
     GrowingTree,
     Kruskal,
     Eller,
+    Sidewinder,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +37,7 @@ pub enum MazeAlgorithm {
     GrowingTree(GrowingTree),
     Kruskal(Kruskal),
     Eller(Eller),
+    Sidewinder(Sidewinder),
 }
 
 impl MazeAlgorithm {
@@ -44,6 +48,7 @@ impl MazeAlgorithm {
             AlgorithmLabel::GrowingTree => MazeAlgorithm::GrowingTree(GrowingTree::new()),
             AlgorithmLabel::Kruskal => MazeAlgorithm::Kruskal(Kruskal::new()),
             AlgorithmLabel::Eller => MazeAlgorithm::Eller(Eller::new()),
+            AlgorithmLabel::Sidewinder => MazeAlgorithm::Sidewinder(Sidewinder::new()),
         }
     }
 }
@@ -56,6 +61,7 @@ impl Algorithm for MazeAlgorithm {
             MazeAlgorithm::GrowingTree(a) => a.initialize(maze),
             MazeAlgorithm::Kruskal(a) => a.initialize(maze),
             MazeAlgorithm::Eller(a) => a.initialize(maze),
+            MazeAlgorithm::Sidewinder(a) => a.initialize(maze),
         }
     }
 
@@ -66,6 +72,7 @@ impl Algorithm for MazeAlgorithm {
             MazeAlgorithm::GrowingTree(a) => a.step(maze),
             MazeAlgorithm::Kruskal(a) => a.step(maze),
             MazeAlgorithm::Eller(a) => a.step(maze),
+            MazeAlgorithm::Sidewinder(a) => a.step(maze),
         }
     }
 }
