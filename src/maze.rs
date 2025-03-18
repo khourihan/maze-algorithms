@@ -120,6 +120,16 @@ impl Neighbors {
             }
         }
     }
+
+    pub fn close(&mut self, cell: UVec2, dir: Direction) {
+        self[cell] &= !Directions::from(dir);
+
+        if let Some(other) = dir.checked_offset(cell) {
+            if other.x < self.width && other.y < self.height {
+                self[other] &= !Directions::from(-dir);
+            }
+        }
+    }
 }
 
 impl Index<UVec2> for Neighbors {

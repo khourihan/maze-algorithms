@@ -294,6 +294,11 @@ impl Renderer for MazeRenderer {
                     ui.selectable_value(&mut self.algorithm, AlgorithmLabel::Kruskal, "Kruskal");
                     ui.selectable_value(&mut self.algorithm, AlgorithmLabel::Eller, "Eller");
                     ui.selectable_value(&mut self.algorithm, AlgorithmLabel::Sidewinder, "Sidewinder");
+                    ui.selectable_value(
+                        &mut self.algorithm,
+                        AlgorithmLabel::RecursiveDivision,
+                        "Recursive Division",
+                    );
                 });
 
             if self.algorithm != before {
